@@ -1,46 +1,19 @@
-<script setup>
-import { reactive, onMounted } from "vue";
-
-const data = reactive({
-  id: "U3RyYW5kdmFuZ3N2ZWogMzd8fDgyNTAgRWeM",
-  firstName: "Christian",
-  lastName: "Hansen",
-  email: "christian-w-h@outlook.com".toLowerCase(),
-  phone: "31639993".split("-").join(""),
-  address: "Strandvangsvej 55||8250 Egå",
-
-  subject: {
-    address: "Strandvangsvej 37||8250 Egå",
-    usage: {
-      kwh: 517,
-      price: 0.2376,
-    },
-  },
-});
-
-onMounted(() => {
-  setTimeout(() => {
-    if (window.data) data.value = window.data;
-  }, 25);
-});
-</script>
-
 <template>
   <main class="page">
     <div class="flex flex-col p-16">
       <div class="flex justify-between">
         <div class="pt-16">
-          <p class="font-bold">{{ data.firstName }} {{ data.lastName }}</p>
+          <p class="font-bold">{{ data.person.name }}</p>
           <p>
             {{
-              data.address
+              data.person.primary_address.address
                 .split("|")
                 .filter((i) => i !== "")
                 .join(", ")
             }}
           </p>
-          <p>+45 {{ data.phone }}</p>
-          <p>{{ data.email }}</p>
+          <p>+45 {{ data.person.phone }}</p>
+          <p>{{ data.person.email }}</p>
         </div>
         <div class="self-end">
           <img
@@ -58,26 +31,34 @@ onMounted(() => {
         class="flex self-end justify-between w-1/2 px-2 mt-4 bg-blue-200 rounded"
       >
         <p>Ørsted Kontonummer</p>
-        <p>1234567890</p>
+        <p>{{ data.person.id }}</p>
       </div>
 
       <div
         class="flex self-end justify-between w-1/2 px-2 mt-1 bg-blue-200 rounded"
       >
         <p>Fakturanummer</p>
-        <p>12345678901231</p>
+        <p>{{ data.invoice.id }}</p>
       </div>
 
       <div
         class="flex self-end justify-between w-1/2 px-2 mt-1 bg-blue-200 rounded"
       >
         <p>Fakturadato</p>
-        <p>17.04.2020</p>
+        <p>
+          {{
+            `${data.invoice.date.day}.${data.invoice.date.month}.${data.invoice.date.year}`
+          }}
+        </p>
       </div>
 
       <div class="mt-8">
-        <p><b>Afregningsperiode</b>: 0.1.04.2020-31.04.2020</p>
-        <p>Forbrug til fakturering:* {{ data.subject.usage.kwh }} kWh</p>
+        <p>
+          <b>Afregningsperiode</b>:
+          {{ `1.${data.invoice.date.month}.${data.invoice.date.year}` }}-
+          {{ `31.${data.invoice.date.month}.${data.invoice.date.year}` }}
+        </p>
+        <p>Forbrug til fakturering:* {{ data.invoice.usage.kwh }} kWh</p>
 
         <p class="w-full px-2 mt-8 font-bold bg-blue-200 rounded">
           EL til adresse
@@ -88,7 +69,13 @@ onMounted(() => {
         </div>
         <div class="flex justify-between px-2">
           <p>EL Forbrug</p>
-          <p>123,00</p>
+          <p>
+            {{
+              new Intl.NumberFormat("da-DK", {
+                minimumFractionDigits: 2,
+              }).format(data.invoice.usage.kwh * data.invoice.usage.price)
+            }}
+          </p>
         </div>
         <div class="flex justify-between px-2">
           <p>Klima tillæg (1%)</p>
@@ -96,15 +83,45 @@ onMounted(() => {
         </div>
         <div class="flex justify-between px-2">
           <p>Moms (25%)</p>
-          <p>250,00</p>
+          <p>
+            {{
+              new Intl.NumberFormat("da-DK", {
+                minimumFractionDigits: 2,
+              }).format(
+                (data.invoice.usage.kwh * data.invoice.usage.price + 10 + 4) *
+                  0.25
+              )
+            }}
+          </p>
         </div>
         <div class="flex justify-between px-2 mb-px border-t border-b">
           <p>I alt inkl. moms</p>
-          <p>538,00</p>
+          <p>
+            {{
+              new Intl.NumberFormat("da-DK", {
+                minimumFractionDigits: 2,
+              }).format(
+                (data.invoice.usage.kwh * data.invoice.usage.price + 10 + 4) *
+                  1.25
+              )
+            }}
+          </p>
         </div>
         <div class="flex justify-between px-2 border-t border-b">
-          <p>Beløb til betalling via Betalingservice d. 10.05.2020</p>
-          <p>538,00</p>
+          <p>
+            Beløb til betalling via Betalingservice d.
+            {{ `31.${data.invoice.date.month}.${data.invoice.date.year}` }}
+          </p>
+          <p>
+            {{
+              new Intl.NumberFormat("da-DK", {
+                minimumFractionDigits: 2,
+              }).format(
+                (data.invoice.usage.kwh * data.invoice.usage.price + 10 + 4) *
+                  1.25
+              )
+            }}
+          </p>
         </div>
       </div>
 
@@ -117,11 +134,51 @@ onMounted(() => {
       </p>
       <p class="mt-4 font-bold">Måleraflæsning</p>
       <p>
-        Seneste aflæsning fra måler nr.: 12345678 var 01.04.2020,: 13709 kWh
+        Seneste aflæsning fra måler nr.: {{ data.address.measure_device }} var
+        {{ `1.${data.invoice.date.month}.${data.invoice.date.year}` }},:
+        {{ data.invoice.measure }} kWh
       </p>
     </div>
   </main>
 </template>
+
+<script>
+import { ref, onMounted } from "vue";
+
+export default {
+  setup() {
+    const data = ref({
+      person: {
+        id: "00000000",
+        name: "Firstname Lastname",
+        email: "example@example.com",
+        phone: "00000000",
+        primary_address: {
+          id: "RWtzZW1wbGV2ZWogMXx8MDAwMCBCeW5hdm4=",
+          address: "Eksemplevej 1||0000 Bynavn",
+        },
+      },
+      address: {
+        id: "RWtzZW1wbGV2ZWogMXx8MDAwMCBCeW5hdm4=",
+        address: "Eksemplevej 1||0000 Bynavn",
+        measure_device: "00000000",
+      },
+      invoice: {
+        id: "000000000000000",
+        date: { day: 1, month: 1, year: 2020 },
+        usage: { price: 0.5, kwh: 100 },
+        measure: 999999,
+      },
+    });
+
+    onMounted(() => {
+      window.data = data;
+    });
+
+    return { data };
+  },
+};
+</script>
 
 <style>
 @page {

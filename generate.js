@@ -5,12 +5,9 @@ const { build } = require("vite");
 const handler = require("serve-handler");
 const http = require("http");
 
-const parse = require("csv-parse/lib/sync");
+const users = require("./data/data.json");
 
 (async () => {
-  const content = fs.readFileSync(`data.csv`);
-  const records = parse(content);
-
   await build({
     root: path.resolve(__dirname),
     base: "./",
@@ -28,34 +25,50 @@ const parse = require("csv-parse/lib/sync");
 
   const page = await browser.newPage();
 
-  async function generate(data, output) {
-    await page.goto("http://localhost:1666");
+  await page.goto("http://localhost:1666");
 
+  async function generate(data, output) {
     await page.evaluate((data) => {
-      window.data = JSON.parse(data);
+      window.data.value = JSON.parse(data);
     }, JSON.stringify(data));
 
     await page.waitForTimeout(100);
 
-    await page.pdf({ path: output, format: "A4" });
+    await page.pdf({ path: output, printBackground: true, format: "A4" });
   }
 
-  for (const record of records) {
-    const addresses = record.splice(4).filter((i) => i != "");
-    for (const address of addresses) {
-      const data = {
-        id: new Buffer(address).toString("base64"),
-        firstName: record[0],
-        lastName: record[1],
-        email: record[2].toLowerCase(),
-        phone: record[3].split("-").join(""),
-        address: addresses[0],
+  for (const user of users) {
+    for (const address of user.addresses) {
+      for (const invoice of address.invoices) {
+        const data = {
+          person: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            primary_address: user.primary_address,
+          },
 
-        subject: {
-          address,
-        },
-      };
-      await generate(data, `documents/${data.id}.pdf`);
+          address: {
+            id: address.id,
+            address: address.address,
+            measure_device: address.measure_device,
+          },
+
+          invoice,
+        };
+
+        fs.mkdirSync(`documents/${address.id}`, { recursive: true });
+
+        await generate(
+          data,
+          `documents/${address.id}/forbrug-${invoice.date.year}-${
+            invoice.date.month
+          }-${invoice.date.day}-${
+            (data.invoice.usage.kwh * data.invoice.usage.price + 10 + 4) * 1.25
+          }.pdf`
+        );
+      }
     }
   }
 

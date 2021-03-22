@@ -1,6 +1,7 @@
 {
   "name": "oestad-invgen",
   "version": "0.0.0",
+  "main": "generate.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -9,6 +10,7 @@
   },
   "dependencies": {
     "csv-parse": "^4.15.3",
+    "faker": "^5.4.0",
     "file-url": "^3.0.0",
     "puppeteer": "^8.0.0",
     "serve": "^11.3.2",
